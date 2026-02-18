@@ -1,31 +1,53 @@
 """
 Versions helper.
 
-Wrapper on distutils.version to allow more laziness.
+Small version wrapper used for Symfony version comparisons.
 """
 
-from distutils.version import LooseVersion
+from __future__ import annotations
+
+import re
+from functools import total_ordering
 
 
-class Version(LooseVersion):
+@total_ordering
+class Version:
     """
     EOS Version.
 
-    Simple wrapper on distutils.LooseVersion to provide more abstraction on version comparison.
+    distutils was removed from the stdlib in Python 3.12+, so we keep a tiny
+    implementation that supports the comparisons EOS needs (e.g. "4.1" <= "4.4").
     """
 
-    def _cmp(self, other):
-        """
-        Comparison override to support extra types.
+    def __init__(self, value):
+        self.raw = str(value)
 
-        If other is not an Version instance (or LooseVersion by inheritance), cast it to string and Version.
-        This provides integers support among others.
-        The base method is then called.
+        # Extract the first dotted numeric version-like substring.
+        # Examples:
+        # - "5.0.1" -> (5, 0, 1)
+        # - "Symfony 5.0.1" -> (5, 0, 1)
+        # - "5.0.1-rc1" -> (5, 0, 1)
+        match = re.search(r"\d+(?:\.\d+)*", self.raw)
+        if match:
+            self.parts = tuple(int(p) for p in match.group(0).split("."))
+        else:
+            self.parts = (0,)
 
-        :param other: the other object to compare against
-        """
+    def _cmp_tuple(self, other: object) -> tuple[tuple[int, ...], tuple[int, ...]]:
+        other_version = other if isinstance(other, Version) else Version(other)
 
-        if not isinstance(other, Version):
-            other = Version(str(other))
+        max_len = max(len(self.parts), len(other_version.parts))
+        left = self.parts + (0,) * (max_len - len(self.parts))
+        right = other_version.parts + (0,) * (max_len - len(other_version.parts))
+        return left, right
 
-        return super()._cmp(other)
+    def __eq__(self, other: object) -> bool:
+        left, right = self._cmp_tuple(other)
+        return left == right
+
+    def __lt__(self, other: object) -> bool:
+        left, right = self._cmp_tuple(other)
+        return left < right
+
+    def __str__(self) -> str:
+        return self.raw

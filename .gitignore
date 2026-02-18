@@ -1,2 +1,9 @@
-.idea
-__pycache__
+result
+result-*
+
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
