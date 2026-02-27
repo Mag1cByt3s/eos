@@ -18,12 +18,14 @@ python3Packages.buildPythonApplication rec {
     requests
     beautifulsoup4
     lxml
+    defusedxml
   ];
 
   propagatedBuildInputs = with python3Packages; [
     requests
     beautifulsoup4
     lxml
+    defusedxml
   ];
 
   pythonImportsCheck = [
